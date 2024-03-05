@@ -1,0 +1,140 @@
+name: "Build network"
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+env:
+  TF_WORK_DIR: "./terraform"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials from AWS account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_RTF_CI_ROLE_ARN }}
+          role-session-name: ${{ secrets.AWS_RTF_SESSION_NAME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform 
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.5
+          working-directory: "${{ env.TF_WORK_DIR }}"
+
+      - name: Terraform fmt
+        id: fmt
+        working-directory: "${{ env.TF_WORK_DIR }}"
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        working-directory: "${{ env.TF_WORK_DIR }}"
+        env:
+          AWS_BUCKET_NAME: ${{ secrets.AWS_TFSTATE_BUCKET_NAME }}
+          AWS_BUCKET_KEY_NAME: ${{ secrets.AWS_TFSTATE_KEY_NAME }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: > 
+          terraform init -backend-config="bucket=${AWS_BUCKET_NAME}" 
+          -backend-config="key=${AWS_BUCKET_KEY_NAME}" 
+          -backend-config="region=${AWS_REGION}"
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: "${{ env.TF_WORK_DIR }}"
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: "${{ env.TF_WORK_DIR }}"
+        run: terraform plan -no-color
+        if: github.event_name == 'pull_request'
+
+      - name: Terraform Run
+        id: run
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        with:
+          working-directory: "${{ env.TF_WORK_DIR }}"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+              // 1. Retrieve existing bot comments for the PR
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              })
+              const botComment = comments.find(comment => {
+                return comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
+              })
+
+              // 2. Prepare format of the comment
+              const output = `#### Terraform Format and Style \U0001F58C\\`${{ steps.fmt.outcome }}\\`
+              #### Terraform Initialization ⚙️\\`${{ steps.init.outcome }}\\`
+              #### Terraform Validation \U0001F916\\`${{ steps.validate.outcome }}\\`
+              <details><summary>Validation Output</summary>
+              
+              \\`\\`\\`\\
+              
+              ${{ steps.validate.outputs.stdout }}
+              \\`\\`\\`
+              
+              </details>
+              
+              #### Terraform Plan \U0001F4D6\\`${{ steps.plan.outcome }}\\`
+              
+              <details><summary>Show Plan</summary>
+              
+              \\`\\`\\`\\
+              
+              ${process.env.PLAN}
+              \\`\\`\\`
+              
+              </details>
+              
+              *Pusher: @${{ github.actor }}, Action: \\`${{ github.event_name }}\\`, Working Directory: \\`${{ vars.TF_WORK_DIR }}\\`, Workflow: \\`${{ github.workflow }}\\`*`;
+
+              // 3. If we have a comment, update it, otherwise create a new one
+              if (botComment) {
+                github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: output
+                })
+              } else {
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: output
+                })
+              }
+
+      - name: Terraform Plan Status
+        id: status
+        working-directory: "${{ env.TF_WORK_DIR }}"
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      - name: Terraform Apply
+        id: apply
+        working-directory: "${{ env.TF_WORK_DIR }}"
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve -input=false
+        env:
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
