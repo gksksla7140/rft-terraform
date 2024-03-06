@@ -28,8 +28,10 @@ jobs:
           role-session-name: ${{ secrets.AWS_RTF_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup Terraform CLI
-        uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform 
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.5
 
       - name: Terraform fmt
         id: fmt
@@ -50,6 +52,7 @@ jobs:
           -backend-config="region=${AWS_REGION}" \
           --backend-config="dynamodb_table=${AWS_TFSTATE_LOCK_TABLE}"
           terraform workspace select staging || terraform workspace new staging
+
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color
@@ -105,7 +108,7 @@ jobs:
 
             </details>
 
-            *Pusher: @${{ github.actor }}, Action: \\`${{ github.event_name }}\\`, Working Directory: \\`${{ vars.TF_WORK_DIR }}\\`, Workflow: \\`${{ github.workflow }}\\`*`;
+            *Pusher: @${{ github.actor }}, Action: \\`${{ github.event_name }}\\`, Working Directory: \\`${{ env.TF_WORK_DIR }}\\`, Workflow: \\`${{ github.workflow }}\\`*`;
 
             // 3. If we have a comment, update it, otherwise create a new one
             if (botComment) {

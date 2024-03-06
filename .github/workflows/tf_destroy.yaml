@@ -21,8 +21,10 @@ jobs:
           role-session-name: ${{ secrets.AWS_RTF_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup Terraform CLI
-        uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform 
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.5
 
       - name: Terraform Init
         working-directory: "${{ env.TF_WORK_DIR }}"
