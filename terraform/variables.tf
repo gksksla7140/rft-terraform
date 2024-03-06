@@ -6,6 +6,12 @@ variable "app_name" {
   default     = "rft-terraform"
 }
 
+variable "contact" {
+  description = "The contact person for the project"
+  type        = string
+  default     = "Justin"
+}
+
 variable "public_subnet" {
   default = ["10.10.100.0/24", "10.10.101.0/24"]
   type    = list(string)

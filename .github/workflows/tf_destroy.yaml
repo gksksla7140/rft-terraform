@@ -8,7 +8,7 @@ env:
   TF_WORK_DIR: "./terraform"
 jobs:
   destroy-workspace:
-    name: Destroy Workspace
+    name: Terraform Destroy
     runs-on: ubuntu-latest
     steps:
       - name: Git checkout

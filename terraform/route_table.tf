@@ -1,9 +1,12 @@
 resource "aws_route_table" "public_1" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name = "${var.app_name}-rt-public-1"
-  }
+  tags = merge(
+    local.common_tags,
+    tomap({
+      Name = "${local.prefix}-rt-public-1"
+    })
+  )
 }
 
 resource "aws_route" "public_1" {
@@ -20,9 +23,12 @@ resource "aws_route_table_association" "public_1" {
 resource "aws_route_table" "public_2" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name = "${var.app_name}-rt-public-2"
-  }
+  tags = merge(
+    local.common_tags,
+    tomap({
+      Name = "${local.prefix}-rt-public-2"
+    })
+  )
 }
 
 resource "aws_route" "public_2" {
@@ -40,9 +46,12 @@ resource "aws_route_table_association" "public_2" {
 resource "aws_route_table" "private_1" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name = "${var.app_name}-rt-private-1"
-  }
+  tags = merge(
+    local.common_tags,
+    tomap({
+      Name = "${local.prefix}-rt-private-1"
+    })
+  )
 }
 
 resource "aws_route" "private_1" {
@@ -59,9 +68,12 @@ resource "aws_route_table_association" "private_1" {
 resource "aws_route_table" "private_2" {
   vpc_id = aws_vpc.vpc.id
 
-  tags = {
-    Name = "${var.app_name}-rt-private-2"
-  }
+  tags = merge(
+    local.common_tags,
+    tomap({
+      Name = "${local.prefix}-rt-private-2"
+    })
+  )
 }
 
 resource "aws_route" "private_2" {

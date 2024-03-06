@@ -1,6 +1,8 @@
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.vpc.id
-  tags = {
-    Name = "${var.app_name}-igw"
-  }
+
+  tags = merge(
+    local.common_tags,
+    tomap({ "Name" : "${local.prefix}-igw" })
+  )
 }

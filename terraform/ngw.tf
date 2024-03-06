@@ -4,9 +4,12 @@ resource "aws_nat_gateway" "ngw1" {
 
   depends_on = [aws_internet_gateway.igw]
 
-  tags = {
-    Name = "${var.app_name}-ngw1"
-  }
+  tags = merge(
+    local.common_tags,
+    tomap({
+      Name = "${local.prefix}-ngw1"
+    })
+  )
 }
 
 resource "aws_nat_gateway" "ngw2" {
@@ -15,7 +18,10 @@ resource "aws_nat_gateway" "ngw2" {
 
   depends_on = [aws_internet_gateway.igw]
 
-  tags = {
-    Name = "${var.app_name}-ngw2"
-  }
+  tags = merge(
+    local.common_tags,
+    tomap({
+      Name = "${local.prefix}-ngw2"
+    })
+  )
 }
